@@ -39,14 +39,17 @@ SAVE_LOCATION="/tmp/"
 def gopro_live():
 	UDP_IP = "10.5.5.9"
 	UDP_PORT = 8554
-	KEEP_ALIVE_PERIOD = 2500
+	KEEP_ALIVE_PERIOD = 2450
 	KEEP_ALIVE_CMD = 2
 
 	MESSAGE = get_command_msg(KEEP_ALIVE_CMD)
 	URL = "http://10.5.5.9:8080/live/amba.m3u8"
-	response_raw = urllib.request.urlopen('http://10.5.5.9/gp/gpControl').read().decode('utf-8')
-	jsondata=json.loads(response_raw)
-	response=jsondata["info"]["firmware_version"]
+	try:
+		response_raw = urllib.request.urlopen('http://10.5.5.9/gp/gpControl').read().decode('utf-8')
+		jsondata=json.loads(response_raw)
+		response=jsondata["info"]["firmware_version"]
+	except:
+		response = ["HD3"]
 	if "HD4" in response or "HD3.2" in response or "HD5" in response or "HX" in response or "HD6" in response:
 		print(jsondata["info"]["model_name"]+"\n"+jsondata["info"]["firmware_version"])
 		##
@@ -98,13 +101,24 @@ def gopro_live():
 			sleep(KEEP_ALIVE_PERIOD/1000)
 	else:
 		response = urllib.request.urlopen('http://10.5.5.9/camera/cv').read()
-		if b"Hero3" in response:
+		print(response)
+		if b"HERO3" in response:
 			PASSWORD=urllib.request.urlopen("http://10.5.5.9/bacpac/sd").read()
 			print("HERO3/3+/2 camera")
 			Password =  str(PASSWORD, 'utf-8')
 			text=re.sub(r'\W+', '', Password)
 			urllib.request.urlopen("http://10.5.5.9/camera/PV?t=" + text + "&p=%02")
-			subprocess.Popen("ffplay " + URL, shell=True)
+			urllib.request.urlopen("http://10.5.5.9:8080/gp/gpExec?p1=gpTsFeeder&a1=%22%22&c1=restart&p2=gpStream&a2=%22%22&c2=restart")
+			if sys.version_info.major >= 3:
+				MESSAGE = bytes(MESSAGE, "utf-8")
+			#subprocess.Popen("ffplay udp://:8554", shell=True)
+			while True:
+				sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+				sock.sendto(MESSAGE, (UDP_IP, UDP_PORT))
+				sleep(KEEP_ALIVE_PERIOD/1000)
+			#subprocess.Popen("ffplay -fflags nobuffer -f:v mpegts -probesize 8192 udp://:8554", shell=True)
+			#sleep(5)
+			#subprocess.Popen("ffplay " + URL, shell=True)
 
 
 
